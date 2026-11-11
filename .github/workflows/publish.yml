@@ -1,0 +1,96 @@
+name: Sync OneDrive and publish
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '*/15 * * * *'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+env:
+  ONEDRIVE_FOLDER: FOG
+jobs:
+  build:
+    outputs:
+      deploy: ${{ steps.decision.outputs.deploy }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install rclone
+        run: curl https://rclone.org/install.sh | sudo bash
+      - name: Configure OneDrive connection
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        run: |
+          mkdir -p "$HOME/.config/rclone"
+          printf '%s\n' "$RCLONE_CONF" > "$HOME/.config/rclone/rclone.conf"
+          echo "Folders in OneDrive root:"
+          rclone lsd onedrive:
+      - name: Sync public source content
+        run: |
+          rclone sync "onedrive:${ONEDRIVE_FOLDER}" content --create-empty-src-dirs \
+            --exclude '_*/**' --exclude '_*' --exclude '~$*' \
+            --include '/**/' --include '*.docx' --include '*.jpg' --include '*.jpeg' --include '*.png' \
+            --exclude '*'
+          echo "Files synced:"
+          find content -type f | head -50
+      - name: Calculate content hash
+        id: hash
+        run: |
+          HASH=$(find content -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          echo "value=$HASH" >> "$GITHUB_OUTPUT"
+      - name: Restore matching build marker
+        id: marker
+        uses: actions/cache/restore@v4
+        with:
+          path: .content-marker
+          key: content-${{ steps.hash.outputs.value }}
+      - name: Decide whether to deploy
+        id: decision
+        run: |
+          if [[ '${{ steps.marker.outputs.cache-hit }}' == 'true' && '${{ github.event_name }}' == 'schedule' ]]; then
+            echo 'deploy=false' >> "$GITHUB_OUTPUT"
+            echo 'No content changes; deployment skipped.'
+          else
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install dependencies
+        if: steps.decision.outputs.deploy == 'true'
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Build static PWA
+        if: steps.decision.outputs.deploy == 'true'
+        run: npm run build
+      - name: Upload Pages artifact
+        if: steps.decision.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Save build marker
+        if: steps.marker.outputs.cache-hit != 'true'
+        run: mkdir -p .content-marker && echo '${{ steps.hash.outputs.value }}' > .content-marker/hash
+      - name: Cache build marker
+        if: steps.marker.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .content-marker
+          key: content-${{ steps.hash.outputs.value }}
+  deploy:
+    needs: build
+    if: needs.build.result == 'success' && needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
