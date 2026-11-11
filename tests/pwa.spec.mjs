@@ -1,0 +1,2 @@
+import { test, expect } from '@playwright/test';
+test('home, document and offline navigation',async({page,context})=>{await page.goto('/');await expect(page.locator('h1')).toContainText('Emergency Information');await page.waitForFunction(()=>navigator.serviceWorker?.ready);const first=page.locator('.tile').first();await first.click();await expect(page.locator('main')).toBeVisible();await page.goto('/');await context.setOffline(true);await page.reload();await expect(page.locator('h1')).toBeVisible();});

@@ -1,0 +1,25 @@
+{
+  "name": "sas-emergency-info-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build/build.mjs content",
+    "build:sample": "node build/build.mjs sample-content",
+    "serve": "npx http-server dist -p 4173 -c-1",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.11.0",
+    "minisearch": "^7.2.0",
+    "sharp": "^0.34.4",
+    "workbox-build": "^7.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "http-server": "^14.1.1"
+  }
+}
