@@ -20,8 +20,8 @@ jobs:
       deploy: ${{ steps.decision.outputs.deploy }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Install rclone
@@ -36,12 +36,15 @@ jobs:
           rclone lsd onedrive:
       - name: Sync public source content
         run: |
-          rclone sync "onedrive:${ONEDRIVE_FOLDER}" content --create-empty-src-dirs \
-            --exclude '_*/**' --exclude '_*' --exclude '~$*' \
-            --include '/**/' --include '*.docx' --include '*.jpg' --include '*.jpeg' --include '*.png' \
-            --exclude '*'
-          echo "Files synced:"
-          find content -type f | head -50
+          mkdir -p content
+          rclone sync "onedrive:${ONEDRIVE_FOLDER}" content --create-empty-src-dirs --ignore-case \
+            --filter '- ~$*' --filter '- _*/**' --filter '- _*' \
+            --filter '+ *.{docx,jpg,jpeg,png}' --filter '- *'
+          echo "Files synced from OneDrive folder '${ONEDRIVE_FOLDER}':"
+          find content -type f | sort | head -100
+          if [ -z "$(find content -type f -name '*.docx' -print -quit)" ]; then
+            echo "::warning::No Word documents found in OneDrive folder '${ONEDRIVE_FOLDER}'. Add folders with .docx files to it."
+          fi
       - name: Calculate content hash
         id: hash
         run: |
