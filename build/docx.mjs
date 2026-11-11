@@ -47,7 +47,7 @@ function escapeHtml(s='') { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':
 export async function convertDocx(input, { assetDir, assetUrlBase }) {
   let imageNo = 0;
   const result = await mammoth.convertToHtml({ path: input }, {
-    styleMap: ["u => u", "strike => s"],
+    styleMap: ["u => u", "strike => s", "p[style-name='Title'] => h2.doc-title:fresh", "p[style-name='Subtitle'] => p.lead:fresh", "p[style-name='Quote'] => blockquote:fresh", "p[style-name='Intense Quote'] => blockquote.important:fresh"],
     includeDefaultStyleMap: true,
     convertImage: mammoth.images.imgElement(async image => {
       const ext = image.contentType.split('/').pop().replace('jpeg','jpg');

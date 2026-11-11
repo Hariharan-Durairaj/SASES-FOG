@@ -4,6 +4,9 @@
   const setConnection = () => connection && (connection.textContent = navigator.onLine ? 'Online' : 'Offline - showing saved content');
   addEventListener('online', setConnection); addEventListener('offline', setConnection); setConnection();
 
+  const updatedEl = $('#updated');
+  if (updatedEl) { const d = new Date(updatedEl.textContent); if (!isNaN(d)) updatedEl.textContent = d.toLocaleString(undefined, { day:'numeric', month:'short', year:'numeric', hour:'numeric', minute:'2-digit' }); }
+
   let waiting;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register(`${document.body.dataset.base}sw.js`).then(reg => {
     const show = worker => { waiting = worker; $('#update-banner').hidden = false; };
