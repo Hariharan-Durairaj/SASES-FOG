@@ -1,4 +1,4 @@
-# Emergency Information PWA
+# FOG PWA
 
 A static, installable emergency-information website generated from a Microsoft 365 OneDrive folder tree. The generated site has no application server or database and precaches its pages and images for offline use.
 
